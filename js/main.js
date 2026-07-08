@@ -71,7 +71,7 @@
   });
 
   /* ---------- Scroll reveal ---------- */
-  var revealEls = document.querySelectorAll(".reveal");
+  var revealEls = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
   if ("IntersectionObserver" in window && !reduceMotion) {
     var revealObs = new IntersectionObserver(
       function (entries) {
@@ -85,6 +85,28 @@
       { threshold: 0.12, rootMargin: "500px 0px -40px 0px" }
     );
     revealEls.forEach(function (el) { revealObs.observe(el); });
+
+    // Safety net: a fast programmatic jump (clicking a nav link to a far section)
+    // can move the viewport past elements between observer samples, leaving them
+    // stuck at opacity 0. Reveal anything that has reached the viewport on scroll,
+    // and after hash navigation in case the browser jumps without scroll events.
+    var revealTicking = false;
+    function revealInView() {
+      revealTicking = false;
+      var vh = window.innerHeight;
+      for (var i = 0; i < revealEls.length; i++) {
+        var el = revealEls[i];
+        if (el.classList.contains("in-view")) continue;
+        if (el.getBoundingClientRect().top < vh * 0.92) {
+          el.classList.add("in-view");
+          revealObs.unobserve(el);
+        }
+      }
+    }
+    window.addEventListener("scroll", function () {
+      if (!revealTicking) { revealTicking = true; window.requestAnimationFrame(revealInView); }
+    }, { passive: true });
+    window.addEventListener("hashchange", function () { window.setTimeout(revealInView, 650); });
   } else {
     revealEls.forEach(function (el) { el.classList.add("in-view"); });
   }
